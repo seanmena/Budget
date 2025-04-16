@@ -3,12 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Budget Tracker</title>
+  <title>Budget Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('Service Worker registered!', reg))
+          .catch(err => console.error('Service Worker error:', err));
+      });
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: sans-serif;
       padding: 1rem;
-      max-width: 500px;
+      max-width: 480px;
       margin: auto;
     }
     input, select, button {
@@ -19,6 +30,7 @@
     }
     .summary {
       margin-top: 1rem;
+      background: #f0f0f0;
       padding: 1rem;
     }
     ul {
@@ -27,6 +39,21 @@
     }
     li {
       margin-bottom: 0.5rem;
+    }
+    .card-container {
+      background: #e0e0e0;
+      margin-top: 1rem;
+      padding: 1rem;
+    }
+    .progress {
+      background: #ccc;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    .progress-bar {
+      height: 12px;
+      background: #4ade80;
     }
   </style>
 </head>
@@ -49,6 +76,7 @@
     <h2>Summary</h2>
     <p id="status"></p>
     <ul id="expense-list"></ul>
+    <canvas id="chart" width="400" height="400"></canvas>
   </div>
 
   <div class="summary">
@@ -64,11 +92,26 @@
     <p id="check-result"></p>
   </div>
 
+  <div class="summary">
+    <h2>Credit & Loan Tracker</h2>
+    <div id="cards"></div>
+    <form id="card-payment-form">
+      <select id="card-select">
+        <option value="discover">Discover</option>
+        <option value="wells">Wells Fargo</option>
+        <option value="computer">Computer Loan</option>
+      </select>
+      <input type="number" id="card-amount" placeholder="Payment or Charge Amount">
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+
   <script>
     const form = document.getElementById('expense-form');
     const list = document.getElementById('expense-list');
     const status = document.getElementById('status');
     const checkResult = document.getElementById('check-result');
+    const chartCanvas = document.getElementById('chart');
 
     const budget = {
       "Food": 300,
@@ -77,7 +120,26 @@
       "Fun": 100
     };
 
-    const expenses = [];
+    const cards = {
+      discover: { name: "Discover", balance: 1653, interest: 28, total: 1653 },
+      wells: { name: "Wells Fargo", balance: 837, interest: 26, total: 837 },
+      computer: { name: "Computer Loan", balance: 1800, interest: 0, total: 1800 }
+    };
+
+    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+    const lastReset = localStorage.getItem('lastReset');
+    const today = new Date();
+
+    if (!lastReset || new Date(lastReset).getMonth() !== today.getMonth()) {
+      const history = JSON.parse(localStorage.getItem('history')) || [];
+      if (expenses.length > 0) {
+        history.push({ month: lastReset ? new Date(lastReset).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Previous', expenses });
+        localStorage.setItem('history', JSON.stringify(history));
+      }
+      expenses = [];
+      localStorage.setItem('expenses', JSON.stringify([]));
+      localStorage.setItem('lastReset', today.toISOString());
+    }
 
     form.addEventListener('submit', e => {
       e.preventDefault();
@@ -86,6 +148,7 @@
       const category = document.getElementById('category').value;
 
       expenses.push({ desc, amount, category });
+      localStorage.setItem('expenses', JSON.stringify(expenses));
       updateDisplay();
 
       form.reset();
@@ -110,6 +173,28 @@
       }
 
       status.innerHTML = statusText;
+      renderChart(totals);
+      renderCards();
+    }
+
+    function renderChart(totals) {
+      const ctx = chartCanvas.getContext('2d');
+      if (window.pieChart) window.pieChart.destroy();
+
+      window.pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(totals),
+          datasets: [{
+            data: Object.values(totals),
+            backgroundColor: ['#f87171','#fbbf24','#34d399','#60a5fa']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
     }
 
     function checkAffordability() {
@@ -129,6 +214,31 @@
         checkResult.style.color = 'red';
       }
     }
+
+    function renderCards() {
+      const container = document.getElementById('cards');
+      container.innerHTML = '';
+      for (const [key, card] of Object.entries(cards)) {
+        const div = document.createElement('div');
+        div.className = 'card-container';
+        const progress = ((card.total - card.balance) / card.total) * 100;
+        div.innerHTML = `<strong>${card.name}</strong><br>Balance: $${card.balance.toFixed(2)}<br>Interest: ${card.interest}%<br>
+        <div class='progress'><div class='progress-bar' style='width:${progress}%;'></div></div>`;
+        container.appendChild(div);
+      }
+    }
+
+    document.getElementById('card-payment-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const cardKey = document.getElementById('card-select').value;
+      const amount = parseFloat(document.getElementById('card-amount').value);
+      if (!isNaN(amount)) {
+        cards[cardKey].balance = Math.max(0, cards[cardKey].balance - amount);
+        renderCards();
+      }
+    });
+
+    updateDisplay();
   </script>
 </body>
 </html>
