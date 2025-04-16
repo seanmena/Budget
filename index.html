@@ -114,10 +114,10 @@
     const chartCanvas = document.getElementById('chart');
 
     const budget = {
-      "Food": 300,
-      "Gas": 150,
-      "Human Needs": 50,
-      "Fun": 100
+      "Food": 400,
+      "Gas": 100,
+      "Human Needs": 30,
+      "Fun": 70
     };
 
     const cards = {
@@ -177,6 +177,24 @@
       renderCards();
     }
 
+    function checkAffordability() {
+      const amount = parseFloat(document.getElementById('check-amount').value);
+      const category = document.getElementById('check-category').value;
+
+      const spent = expenses
+        .filter(e => e.category === category)
+        .reduce((sum, e) => sum + e.amount, 0);
+
+      const remaining = budget[category] - spent;
+      if (amount <= remaining) {
+        checkResult.textContent = `Yes, you can afford it! You'll have $${(remaining - amount).toFixed(2)} left in ${category}.`;
+        checkResult.style.color = 'green';
+      } else {
+        checkResult.textContent = `Nope, you're $${(amount - remaining).toFixed(2)} over in ${category}.`;
+        checkResult.style.color = 'red';
+      }
+    }
+
     function renderChart(totals) {
       const ctx = chartCanvas.getContext('2d');
       if (window.pieChart) window.pieChart.destroy();
@@ -195,24 +213,6 @@
           plugins: { legend: { position: 'bottom' } }
         }
       });
-    }
-
-    function checkAffordability() {
-      const amount = parseFloat(document.getElementById('check-amount').value);
-      const category = document.getElementById('check-category').value;
-
-      const spent = expenses
-        .filter(e => e.category === category)
-        .reduce((sum, e) => sum + e.amount, 0);
-
-      const remaining = budget[category] - spent;
-      if (amount <= remaining) {
-        checkResult.textContent = `Yes, you can afford it! You'll have $${(remaining - amount).toFixed(2)} left in ${category}.`;
-        checkResult.style.color = 'green';
-      } else {
-        checkResult.textContent = `Nope, you're $${(amount - remaining).toFixed(2)} over in ${category}.`;
-        checkResult.style.color = 'red';
-      }
     }
 
     function renderCards() {
