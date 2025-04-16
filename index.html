@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Budget Tracker</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      max-width: 500px;
+      margin: auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      font-size: 1rem;
+    }
+    .summary {
+      margin-top: 1rem;
+      padding: 1rem;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Budget Tracker</h1>
+
+  <form id="expense-form">
+    <input type="text" id="desc" placeholder="What did you buy?" required>
+    <input type="number" id="amount" placeholder="How much?" required>
+    <select id="category" required>
+      <option value="Food">Food</option>
+      <option value="Gas">Gas</option>
+      <option value="Human Needs">Human Needs</option>
+      <option value="Fun">Fun</option>
+    </select>
+    <button type="submit">Add Expense</button>
+  </form>
+
+  <div class="summary">
+    <h2>Summary</h2>
+    <p id="status"></p>
+    <ul id="expense-list"></ul>
+  </div>
+
+  <div class="summary">
+    <h2>Can I afford it?</h2>
+    <input type="number" id="check-amount" placeholder="Enter amount">
+    <select id="check-category">
+      <option value="Food">Food</option>
+      <option value="Gas">Gas</option>
+      <option value="Human Needs">Human Needs</option>
+      <option value="Fun">Fun</option>
+    </select>
+    <button onclick="checkAffordability()">Check</button>
+    <p id="check-result"></p>
+  </div>
+
+  <script>
+    const form = document.getElementById('expense-form');
+    const list = document.getElementById('expense-list');
+    const status = document.getElementById('status');
+    const checkResult = document.getElementById('check-result');
+
+    const budget = {
+      "Food": 300,
+      "Gas": 150,
+      "Human Needs": 50,
+      "Fun": 100
+    };
+
+    const expenses = [];
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const desc = document.getElementById('desc').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const category = document.getElementById('category').value;
+
+      expenses.push({ desc, amount, category });
+      updateDisplay();
+
+      form.reset();
+    });
+
+    function updateDisplay() {
+      list.innerHTML = '';
+      const totals = { "Food": 0, "Gas": 0, "Human Needs": 0, "Fun": 0 };
+
+      expenses.forEach(item => {
+        totals[item.category] += item.amount;
+        const li = document.createElement('li');
+        li.textContent = `${item.category}: ${item.desc} - $${item.amount.toFixed(2)}`;
+        list.appendChild(li);
+      });
+
+      let statusText = '';
+      for (const [cat, limit] of Object.entries(budget)) {
+        const spent = totals[cat];
+        const color = spent > limit ? 'red' : 'green';
+        statusText += `<p style="color:${color}">${cat}: $${spent.toFixed(2)} / $${limit}</p>`;
+      }
+
+      status.innerHTML = statusText;
+    }
+
+    function checkAffordability() {
+      const amount = parseFloat(document.getElementById('check-amount').value);
+      const category = document.getElementById('check-category').value;
+
+      const spent = expenses
+        .filter(e => e.category === category)
+        .reduce((sum, e) => sum + e.amount, 0);
+
+      const remaining = budget[category] - spent;
+      if (amount <= remaining) {
+        checkResult.textContent = `Yes, you can afford it! You'll have $${(remaining - amount).toFixed(2)} left in ${category}.`;
+        checkResult.style.color = 'green';
+      } else {
+        checkResult.textContent = `Nope, you're $${(amount - remaining).toFixed(2)} over in ${category}.`;
+        checkResult.style.color = 'red';
+      }
+    }
+  </script>
+</body>
+</html>
